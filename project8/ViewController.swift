@@ -23,10 +23,18 @@ class ViewController: UIViewController {
     
     var score = 0 {
         didSet{
-            scoreLable.text = "Score: \(score)"
+            DispatchQueue.main.async { [weak self] in
+                self?.scoreLable.text = "Score: \(self?.score ?? 0)"
+            }
         }
     }
     var level = 1
+    
+    
+    
+    var clueString = ""
+    var soluationString = ""
+    var letterBits = [String]()
     
     override func loadView() {
         view = UIView()
@@ -90,8 +98,8 @@ class ViewController: UIViewController {
         NSLayoutConstraint.activate([
             scoreLable.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor),
             scoreLable.trailingAnchor.constraint(equalTo: view.layoutMarginsGuide.trailingAnchor),
-        
-        
+            
+            
             cluesLable.topAnchor.constraint(equalTo: scoreLable.bottomAnchor),
             cluesLable.leadingAnchor.constraint(equalTo: view.layoutMarginsGuide.leadingAnchor, constant: 100),
             cluesLable.widthAnchor.constraint(equalTo: view.layoutMarginsGuide.widthAnchor, multiplier: 0.6, constant: -100),
@@ -125,7 +133,7 @@ class ViewController: UIViewController {
             buttonView.topAnchor.constraint(equalTo: submit.bottomAnchor, constant: 20),
             buttonView.bottomAnchor.constraint(equalTo: view.layoutMarginsGuide.bottomAnchor, constant: -20)
             
-        
+            
         ])
         
         let width = 150
@@ -135,7 +143,10 @@ class ViewController: UIViewController {
         for row in 0..<4{
             for col in 0..<5{
                 let letterButton = UIButton(type: .system)
+                
                 letterButton.titleLabel?.font = UIFont.systemFont(ofSize: 36)
+                letterButton.layer.borderWidth = 1
+                letterButton.layer.borderColor = UIColor.lightGray.cgColor
                 letterButton.setTitle("www", for: .normal)
                 letterButton.addTarget(self, action: #selector(letterTapped), for: .touchUpInside)
                 
@@ -143,144 +154,172 @@ class ViewController: UIViewController {
                 let frame = CGRect(x: col * width, y: row * height, width: width, height: height)
                 letterButton.frame = frame
                 
-               
+                
                 buttonView.addSubview(letterButton)
                 letterButtons.append(letterButton)
                 
                 
             }
+            
         }
-        
         
     }
     
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        loadlevel()
-        // Do any additional setup after loading the view.
+        performSelector(inBackground: #selector(loadlevel), with: nil)
     }
-
+    
     
     @objc func letterTapped(_ sender: UIButton){
         guard let buttonTitle = sender.titleLabel?.text else {return}
-
+        
         currentAns.text = currentAns.text?.appending(buttonTitle)
         activatedButtons.append(sender)
         sender.isHidden = true
         
     }
     @objc func submitTapped(_ sender: UIButton){
+        
         guard let answareText = currentAns.text else {return}
         
         if let soluationPosition = soluations.firstIndex(of: answareText){
             activatedButtons.removeAll()
             
-            
             var splitAnsware = ansLable.text?.components(separatedBy: "\n")
             splitAnsware?[soluationPosition] = answareText
             ansLable.text = splitAnsware?.joined(separator: "\n")
             
-            
             currentAns.text = ""
             score += 1
             
+        }
+        else {
+            let alert = UIAlertController(title: "Wrong Answer", message: "The answer is incorrect. Please try again.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+            present(alert, animated: true, completion: nil)
+            
+            currentAns.text = ""
             
             
+            for btn in activatedButtons{
+                btn.isHidden = false
+            }
+        }
+        
+        if score % 7 == 0 {
+            let ac = UIAlertController(title: "Well done!", message: "Let's go to another level", preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "OK", style: .default, handler: levelup))
+            present(ac, animated: true)
+        }
+        
+        
+    }
+        
+        
+        func levelup(action: UIAlertAction){
+            level += 1
+            soluations.removeAll(keepingCapacity: true)
+            loadlevel()
             
-            if score % 7 == 0 {
-                let ac = UIAlertController(title: "well done!", message: "let's go to another level", preferredStyle: .alert)
-                ac.addAction(UIAlertAction(title: "OK", style: .default, handler: levelup))
-                present(ac, animated: true)
+            
+            for btn in letterButtons{
+                btn.isHidden = false
             }
         }
         
         
-    }
-    
-    func levelup(action: UIAlertAction){
-        level += 1
-        soluations.removeAll(keepingCapacity: true)
-        loadlevel()
         
-        
-        for btn in letterButtons{
-            btn.isHidden = false
+        @objc func clearTapped(_ sender: UIButton){
+            
+            
+            
+            if var text = currentAns.text, !text.isEmpty {
+                text.removeLast()
+                currentAns.text = text
+            }
+            
+            
+            
+            
+            for btn in activatedButtons{
+                btn.isHidden = false
+            }
+            
+            activatedButtons.removeAll()
+            
+            
         }
-    }
-    
-    
-    
-    @objc func clearTapped(_ sender: UIButton){
-        currentAns.text = ""
         
-        for btn in activatedButtons{
-            btn.isHidden = false
+        @objc func loadlevel(action: UIAlertAction! = nil){
+            performSelector(inBackground: #selector(parselevel), with: nil)
+            performSelector(onMainThread: #selector(updateleveles), with: nil, waitUntilDone: false)
+            
+            score = 0
+            letterButtons.shuffle()
+            
+            performSelector(onMainThread: #selector(setTitle), with: nil, waitUntilDone: false)
         }
         
-        activatedButtons.removeAll()
-        
-    }
-    
-    func loadlevel(){
-        
-        var clueString = ""
-        var soluationString = ""
-        var letterBits = [String]()
         
         
-        if let levelFileUrl = Bundle.main.url(forResource: "level\(level)", withExtension: "txt"){
-            if let levelContents = try? String(contentsOf: levelFileUrl){
-                var lines = levelContents.components(separatedBy: "\n")
-                lines.shuffle()
-                
-                for (index, line) in lines.enumerated(){
-                    let parts = line.components(separatedBy: ": ")
-                    let answare = parts[0]
-                    let clue = parts[1]
+        
+        @objc func parselevel(){
+            
+            
+            
+            if let levelFileUrl = Bundle.main.url(forResource: "level\(level)", withExtension: "txt"){
+                if let levelContents = try? String(contentsOf: levelFileUrl){
+                    var lines = levelContents.components(separatedBy: "\n")
+                    lines.shuffle()
                     
-                    clueString += "\(index + 1).\(clue)\n"
-                    
-                    
-                    let soluationWord = answare.replacingOccurrences(of: "|", with: "")
-                    soluationString += "\(soluationWord.count) letters\n"
-                    soluations.append(soluationWord)
-                    
-                    
-                    let bits = answare.components(separatedBy: "|")
-                    letterBits += bits
-                    
-                    
-                    
+                    for (index, line) in lines.enumerated(){
+                        let parts = line.components(separatedBy: ": ")
+                        let answare = parts[0]
+                        let clue = parts[1]
+                        
+                        clueString += "\(index + 1).\(clue)\n"
+                        
+                        
+                        let soluationWord = answare.replacingOccurrences(of: "|", with: "")
+                        soluationString += "\(soluationWord.count) letters\n"
+                        soluations.append(soluationWord)
+                        
+                        
+                        let bits = answare.components(separatedBy: "|")
+                        letterBits += bits
+                        
+                    }
                 }
-                
-                
             }
         }
         
-        cluesLable.text = clueString.trimmingCharacters(in: .whitespacesAndNewlines)
-        ansLable.text = soluationString.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        
-        letterBits.shuffle()
-        
-        if letterBits.count == letterButtons.count{
-            for i in 0..<letterButtons.count{
-                letterButtons[i].setTitle(letterBits[i], for: .normal)
-            }
+        @objc func updateleveles(){
+            
+            cluesLable.text = clueString.trimmingCharacters(in: .whitespacesAndNewlines)
+            ansLable.text = soluationString.trimmingCharacters(in: .whitespacesAndNewlines)
+            
         }
         
-        
+        @objc func setTitle(){
+            if letterButtons.count == letterBits.count{
+                for i in 0..<letterButtons.count{
+                    letterButtons[i].setTitle(letterBits[i], for: .normal)
+                }
+            }
+            
+        }
         
     }
     
     
+
     
     
     
     
     
     
-}
+
 

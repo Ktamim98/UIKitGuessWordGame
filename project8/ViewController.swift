@@ -173,11 +173,18 @@ class ViewController: UIViewController {
     
     
     @objc func letterTapped(_ sender: UIButton){
+        
         guard let buttonTitle = sender.titleLabel?.text else {return}
         
         currentAns.text = currentAns.text?.appending(buttonTitle)
         activatedButtons.append(sender)
-        sender.isHidden = true
+        UIView.animate(withDuration: 1, delay: 0, animations: {
+                sender.alpha = 0
+            }) { finished in
+                sender.isHidden = false
+                //this should be true for hide the button when tapped but works pritty fine with false and i don't know why.
+            }
+        
         
     }
     @objc func submitTapped(_ sender: UIButton){
@@ -204,7 +211,11 @@ class ViewController: UIViewController {
             
             
             for btn in activatedButtons{
-                btn.isHidden = false
+                UIView.animate(withDuration: 1, delay: 0, animations: {
+                    btn.alpha = 1
+                    }) { finished in
+                       btn.isHidden = false
+                    }
             }
         }
         
@@ -225,7 +236,11 @@ class ViewController: UIViewController {
             
             
             for btn in letterButtons{
-                btn.isHidden = false
+                UIView.animate(withDuration: 1, delay: 0, animations: {
+                    btn.alpha = 1
+                    }) { finished in
+                       btn.isHidden = false
+                    }
             }
         }
         
@@ -244,7 +259,11 @@ class ViewController: UIViewController {
             
             
             for btn in activatedButtons{
-                btn.isHidden = false
+                UIView.animate(withDuration: 1, delay: 0, animations: {
+                    btn.alpha = 1
+                    }) { finished in
+                       btn.isHidden = false
+                    }
             }
             
             activatedButtons.removeAll()

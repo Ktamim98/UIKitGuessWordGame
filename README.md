@@ -17,5 +17,5 @@ https://github.com/Ktamim98/UIKitGuessWordGame/assets/124142522/aad8aa40-7c4a-45
 - Development Environment: Xcode
 - Version Control: Git
 
-Credits
+## Credits
 This project was made as a part of Hacking with Swift course by Paul Hudson.
